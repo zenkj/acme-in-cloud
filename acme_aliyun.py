@@ -6,6 +6,11 @@ try:
 except ImportError:
     from urllib2 import urlopen, Request # Python 2
 
+from aliyunsdkcore.client import AcsClient
+from aliyunsdkcore.acs_exception.exceptions import ClientException
+from aliyunsdkcore.acs_exception.exceptions import ServerException
+from aliyunsdkalidns.request.v20150109 import DescribeDomainRecordsRequest, DeleteDomainRecordRequest, AddDomainRecordRequest
+
 DEFAULT_CA = "https://acme-v02.api.letsencrypt.org" # DEPRECATED! USE DEFAULT_DIRECTORY_URL INSTEAD
 DEFAULT_DIRECTORY_URL = "https://acme-v02.api.letsencrypt.org/directory"
 
@@ -69,11 +74,15 @@ def get_crt(account_key, csr, aliyun_access_key, log=LOGGER, CA=DEFAULT_CA, disa
                 continue
             return result
 
+    def _aliyun_remove_record(recordId):
+        with open(aliyun_access_key, 'r') as f:
+            accessKeyId, accessKeySecret = f.read().split()
+        client = AcsClient(accessKeyId, accessKeySecret, "cn-hangzhou")
+        request = DeleteDomainRecordRequest.DeleteDomainRecordRequest()
+        request.set_RecordId(recordId)
+        client.do_action_with_exception(request)
+
     def _aliyun_set_txtrecord(domain, txtrecord):
-        from aliyunsdkcore.client import AcsClient
-        from aliyunsdkcore.acs_exception.exceptions import ClientException
-        from aliyunsdkcore.acs_exception.exceptions import ServerException
-        from aliyunsdkalidns.request.v20150109 import DescribeDomainRecordsRequest, DeleteDomainRecordRequest, AddDomainRecordRequest
         with open(aliyun_access_key, 'r') as f:
             accessKeyId, accessKeySecret = f.read().split()
         client = AcsClient(accessKeyId, accessKeySecret, "cn-hangzhou")
@@ -97,7 +106,8 @@ def get_crt(account_key, csr, aliyun_access_key, log=LOGGER, CA=DEFAULT_CA, disa
         request.set_RR('_acme-challenge')
         request.set_Type('TXT')
         request.set_Value(txtrecord)
-        client.do_action_with_exception(request)
+        recordId = json.loads(client.do_action_with_exception(request).decode())['RecordId']
+        return recordId
 
     # parse account key to get public key
     log.info("Parsing account key...")
@@ -161,7 +171,7 @@ def get_crt(account_key, csr, aliyun_access_key, log=LOGGER, CA=DEFAULT_CA, disa
         token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
         keyauthorization = "{0}.{1}".format(token, thumbprint)
         txtrecord = _b64(hashlib.sha256(keyauthorization.encode('utf8')).digest())
-        _aliyun_set_txtrecord(domain, txtrecord)
+        recordId = _aliyun_set_txtrecord(domain, txtrecord)
 
         # check that the txt record is in place
         try:
@@ -173,6 +183,7 @@ def get_crt(account_key, csr, aliyun_access_key, log=LOGGER, CA=DEFAULT_CA, disa
         # say the challenge is done
         _send_signed_request(challenge['url'], {}, "Error submitting challenges: {0}".format(domain))
         authorization = _poll_until_not(auth_url, ["pending"], "Error checking challenge status for {0}".format(domain))
+        _aliyun_remove_record(recordId)
         if authorization['status'] != "valid":
             raise ValueError("Challenge did not pass for {0}: {1}".format(domain, authorization))
         log.info("{0} verified!".format(domain))
