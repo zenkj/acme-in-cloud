@@ -94,3 +94,6 @@ Let's Encrypt，私钥用来对请求进行签名。大熊使用如下命令创�
 	0 0 1 * * /path/to/renewal.sh 2>> /var/log/acme_aliyun.log
 
 
+# 感谢
+基于Daniel Roesler的(acme-tiny)[https://github.com/diafygi/acme-tiny]开发，
+感谢Daniel Roesler。
