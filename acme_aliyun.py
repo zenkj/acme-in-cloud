@@ -13,6 +13,8 @@ from aliyunsdkalidns.request.v20150109 import DescribeDomainRecordsRequest, Dele
 
 DEFAULT_CA = "https://acme-v02.api.letsencrypt.org" # DEPRECATED! USE DEFAULT_DIRECTORY_URL INSTEAD
 DEFAULT_DIRECTORY_URL = "https://acme-v02.api.letsencrypt.org/directory"
+# use this for testing and debugging
+#DEFAULT_DIRECTORY_URL = "https://acme-staging-v02.api.letsencrypt.org/directory"
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.StreamHandler())
@@ -174,11 +176,16 @@ def get_crt(account_key, csr, aliyun_access_key, log=LOGGER, CA=DEFAULT_CA, disa
         recordId = _aliyun_set_txtrecord(domain, txtrecord)
 
         # check that the txt record is in place
-        try:
-            out = _cmd(["dig", "-t", "txt", '+short', "_acme-challenge.{}".format(domain)], err_msg="Error check txt record _acme-challenge.{0}".format(domain))
-            assert(out.decode('utf8').find(txtrecord) > 0)
-        except (AssertionError, ValueError) as e:
-            raise ValueError("set txt record _acme-challenge.{}, but can't find it".format(domain))
+        for i in range(5):
+            try:
+                out = _cmd(["dig", "-t", "txt", '+short', "_acme-challenge.{}".format(domain)], err_msg="Error check txt record _acme-challenge.{0}".format(domain))
+                assert(out.decode('utf8').find(txtrecord) > 0)
+                break
+            except (AssertionError, ValueError) as e:
+                if i < 3:
+                    time.sleep(3)
+                    continue
+                raise ValueError("set txt record _acme-challenge.{}, but can't find it".format(domain))
 
         # say the challenge is done
         _send_signed_request(challenge['url'], {}, "Error submitting challenges: {0}".format(domain))
@@ -215,7 +222,7 @@ def main(argv=None):
             python acme_aliyun.py --account-key ./account.key --csr ./domain.csr --aliyun-access-key ./aliyun.key > signed_chain.crt
 
             Example Crontab Renewal (once per month):
-            0 0 1 * * python /path/to/acme_aliyun.py --account-key /path/to/account.key --csr /path/to/domain.csr --aliyun-access-key ./aliyun.key > /path/to/signed_chain.crt 2>> /var/log/aliyundns_acme.log
+            0 0 1 * * python /path/to/acme_aliyun.py --account-key /path/to/account.key --csr /path/to/domain.csr --aliyun-access-key ./aliyun.key > /path/to/signed_chain.crt 2>> /var/log/acme_aliyun.log
             """)
     )
     parser.add_argument("--account-key", required=True, help="path to your Let's Encrypt account private key")
