@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright Daniel Roesler, under MIT license, see LICENSE at github.com/diafygi/acme-tiny
+# Based on Daniel Roesler's awesome acme-tiny, see github.com/diafygi/acme-tiny
 import argparse, subprocess, json, os, sys, base64, binascii, time, hashlib, re, copy, textwrap, logging
 try:
     from urllib.request import urlopen, Request # Python 3
