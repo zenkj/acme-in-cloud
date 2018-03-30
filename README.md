@@ -18,10 +18,8 @@ HTTPS证书提供商（CA），该客户端能自动从Let's Encrypt定期下载
 操纵域名记录，从而完成https证书从Let's Encrypt的自动更新。
 
 # 使用方法
-以下以站长大熊（daxiong）为自己的网站daxiongmao.com添加https支持为例，讲述
+以下以站长大熊（daxiong）为自己在阿里云的网站daxiongmao.com添加https支持为例，讲述
 使用acme-in-cloud的过程。
-
-## 阿里云
 
 ### 1. 创建Let's Encrypt的账号私钥
 在使用Let's Encrypt时，每个账号必须有一个自己的公私钥对，其中公钥注册到
