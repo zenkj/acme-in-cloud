@@ -1,0 +1,2 @@
+aliyun_python_sdk_core_v3
+aliyun_python_sdk_alidns
